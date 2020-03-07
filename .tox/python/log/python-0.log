@@ -1,0 +1,7 @@
+action: python, msg: getenv
+cwd: /home/admin123/PycharmProjects/fundooProject/fundooNotes/.tox
+cmd: /home/admin123/PycharmProjects/fundooProject/venv/bin/python -m virtualenv --no-download --python /home/admin123/PycharmProjects/fundooProject/venv/bin/python python
+created virtual environment CPython3.7.5.final.0-64 in 111ms
+  creator CPython3Posix(dest=/home/admin123/PycharmProjects/fundooProject/fundooNotes/.tox/python, clear=False, global=False)
+  seeder FromAppData(download=False, pip=latest, setuptools=latest, wheel=latest, via=copy, app_data_dir=/home/admin123/.local/share/virtualenv/seed-app-data/v1)
+  activators BashActivator,CShellActivator,FishActivator,PowerShellActivator,PythonActivator,XonshActivator
