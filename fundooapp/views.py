@@ -26,15 +26,12 @@ class Login(APIView):
         username = request.data['username']
         usr_pswd = request.data['password']
         user_obj = User.objects.all()
-        print(user_obj)
         user = authenticate(username=username, password=usr_pswd)
-        print(user, "====>", username, usr_pswd)
         if user:
             login(request, user)
             payload = {
                 "id": user.id
             }
             jwt_token = {'token': jwt.encode(payload, "SECRET_KEY")}
-            print(jwt_token)
         return HttpResponse("you are logged in")
 
