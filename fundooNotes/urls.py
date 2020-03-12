@@ -21,4 +21,5 @@ urlpatterns = [
     url('admin/', admin.site.urls),
     url('signup/', views.Signup.as_view()),
     url('login/', views.Login.as_view()),
+    url('forgot_password/', views.ForgotPassword.as_view())
 ]

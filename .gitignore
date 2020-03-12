@@ -3,4 +3,4 @@ venv/
 fundooenv/
 .env/
 .env
-.tox
+.tox/
