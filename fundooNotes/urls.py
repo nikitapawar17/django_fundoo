@@ -18,6 +18,7 @@ from django.conf.urls import url
 from fundooapp import views
 from django.urls import path
 
+
 urlpatterns = [
     url('admin/', admin.site.urls),
     url('signup/', views.Signup.as_view()),

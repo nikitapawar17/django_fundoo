@@ -33,12 +33,11 @@ class Signup(APIView):
                     "user_email": request.data["email"]
                 }
                 jwt_token = jwt.encode(payload, "SECRET_KEY", "HS256").decode('utf-8')
-                subject = "This email is for demo"
-                message = "Welcome to fundooProject"
-                to_list = request.data['email']
-                # send_html_email(to_list, message, subject)
-                send_mail(subject, message, settings.EMAIL_HOST_USER, [to_list])
-                print("EMAIL SENT")
+                # subject = "This email is for demo"
+                # message = "Welcome to fundooProject"
+                # to_list = request.data['email']
+                # # send_html_email(to_list, message, subject)
+                # send_mail(subject, message, settings.EMAIL_HOST_USER, [to_list])
                 response = {
                     "success": True,
                     "message": "successfully Registered",
@@ -102,7 +101,6 @@ class ForgotPassword(FormView):
                         "user_email": email
                     }
                     jwt_token = jwt.encode(payload, "SECRET_KEY", "HS256").decode('utf-8')
-                    print(jwt_token)
 
                     link = 'http://127.0.0.1:8000/reset_password/{}'.format(jwt_token)
                     html = """<html><body><p>

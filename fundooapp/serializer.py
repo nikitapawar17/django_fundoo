@@ -17,10 +17,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'username', 'password')
 
 
+
 class ResetPasswordSerializer(serializers.ModelSerializer):
     new_pswd = serializers.CharField(min_length=8, max_length=50)
     confirm_pswd = serializers.CharField(min_length=8, max_length=50)
-
 
     class Meta:
         model = User
