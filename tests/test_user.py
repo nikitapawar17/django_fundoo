@@ -15,3 +15,10 @@ def test_login():
     data = {"username": "user1", "password": "user1@123"}
     result = requests.post(url, data=data)
     assert result.status_code == 200
+
+
+# def test_forgot():
+#     url = main_url + '/forgot_password/'
+#     data = {"email": "nikita.pawar005@gmail.com"}
+#     result = requests.post(url, data=data)
+#     assert result.status_code == 200

@@ -10,3 +10,20 @@ from django.contrib.auth.models import User
 #
 #     def __str__(self):
 #         return self.name
+
+
+class Note(models.Model):
+    title = models.CharField(max_length=20, blank=False)
+    description = models.CharField(max_length=255)
+    COLOR_CHOICES = (
+        ('Red', 'Red'),
+        ('Green', 'Green'),
+        ('Blue', 'Blue')
+    )
+    color = models.CharField(default='Blue', choices=COLOR_CHOICES, max_length=20)
+    is_archive = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    is_trash = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title

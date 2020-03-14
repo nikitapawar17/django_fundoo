@@ -4,6 +4,9 @@ from email.mime.multipart import MIMEMultipart
 
 # import logging
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def send_mail(receiver_email, message):
@@ -15,7 +18,7 @@ def send_mail(receiver_email, message):
         server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
         server.sendmail(settings.EMAIL_HOST_USER, receiver_email, message)
         server.quit()
-        # logging.info("Email sent to ", receiver_email)
+        logger.info("Email sent to ", receiver_email)
 
     except Exception as e:
         print(e)

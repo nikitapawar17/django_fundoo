@@ -2,6 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 
+from .models import Note
+
 
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True, validators=[UniqueValidator(queryset=User.objects.all())])
@@ -17,7 +19,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'username', 'password')
 
 
-
 class ResetPasswordSerializer(serializers.ModelSerializer):
     new_pswd = serializers.CharField(min_length=8, max_length=50)
     confirm_pswd = serializers.CharField(min_length=8, max_length=50)
@@ -25,3 +26,11 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('new_pswd', 'confirm_pswd')
+
+
+class NoteSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Note
+        fields = '__all__'
+

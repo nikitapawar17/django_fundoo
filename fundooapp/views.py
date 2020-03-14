@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import FormView
 from rest_framework import status
 from rest_framework.generics import CreateAPIView
@@ -13,7 +13,12 @@ from django.contrib.auth import login, logout, authenticate, update_session_auth
 
 from .email_service import send_html_email
 from .forms import ForgotPasswordForm, ResetPasswordForm
-from .serializer import UserSerializer, ResetPasswordSerializer
+from .serializer import UserSerializer, ResetPasswordSerializer, NoteSerializer
+from .models import Note
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Create your views here.
 from django.conf import settings
 
@@ -40,9 +45,10 @@ class Signup(APIView):
                 # send_mail(subject, message, settings.EMAIL_HOST_USER, [to_list])
                 response = {
                     "success": True,
-                    "message": "successfully Registered",
+                    "message": "Registered Successfully",
                     "data": [serializer.data]
                 }
+                logger.info("Registered Successfully")
                 return JsonResponse(data=response, status=status.HTTP_201_CREATED)
             else:
                 return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
@@ -71,6 +77,7 @@ class Login(APIView):
                 "message": "Successfully login",
                 "data": [jwt_token]
             }
+            logger.info("Login Successfully")
             return JsonResponse(data=response, status=status.HTTP_200_OK)
         else:
             return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
@@ -78,7 +85,7 @@ class Login(APIView):
 
 class ForgotPassword(FormView):
     def get(self, request, *args, **kwargs):
-        form = ResetPasswordForm()
+        form = ForgotPasswordForm()
         return render(request, 'forgot_password.html', {'form': form})
 
     form_class = ForgotPasswordForm
@@ -112,12 +119,13 @@ class ForgotPassword(FormView):
                                                                                   "inbox to continue reset password.")
                     # response = {
                     #     "success": True,
-                    #     "message": "Email has been sent to  {} 's email address. Please check inbox to continue reset password.".format(email),
+                    #     "message": "Email has been sent to  {} 's email address. Please check " \
+                    #                "inbox to continue reset password.".format(email),
                     #     "data": []
                     # }
-                    # return JsonResponse(data=response, status=status.HTTP_200_OK)
+                    logger.info("Email has sent to" + email + "'s email address. Please check inbox "
+                                                              "to continue reset pswd ")
                     return result
-                # return HttpResponse({"message": "Forgot mail"})
                 else:
                     print("Email not register, first register yourself")
                     return redirect('/signup')
@@ -125,7 +133,6 @@ class ForgotPassword(FormView):
             form = ForgotPasswordForm()
             result = self.form_valid(form)
             return result
-        # return render(request, "forgot_password.html", {'form': form})
 
 
 class ResetPassword(APIView):
@@ -152,10 +159,13 @@ class ResetPassword(APIView):
                     print(user_obj, type(user_obj))
                     user_obj.set_password(new_pswd)
                     user_obj.save()
+                    logger.info("Password reset successfully")
                     return redirect('/login')
                 else:
+                    logger.error("Password mismatch")
                     return HttpResponse('Password mismatch, try again')
             else:
+                logger.error("Password reset has not been unsuccessful.")
                 return HttpResponse('Password reset has not been unsuccessful.')
         else:
             form = ResetPasswordForm()
@@ -178,7 +188,96 @@ class ResetPassword(APIView):
 #             return HttpResponse("Password Mismatch")
 
 
+class NoteView(APIView):
+    serializer_class = NoteSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        serializer = NoteSerializer(data=request.data)
+        if serializer.is_valid():
+            note = serializer.save()
+            if note:
+                response = {
+                    "success": True,
+                    "message": "Note created successfully",
+                    "data": [serializer.data]
+                }
+                logger.info("Note created successfully")
+                return JsonResponse(data=response, status=status.HTTP_200_OK)
+            else:
+                logger.error("Note does not create")
+                return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, *args, **kwargs):
+        note_obj = Note.objects.all()
+        if note_obj:
+            data = NoteSerializer(note_obj, many=True).data  # serialize the data
+            response = {
+                "success": True,
+                "message": "Get all notes successfully",
+                "data": [data]
+            }
+            logger.info("All notes got successfully")
+            return Response(data=response, status=status.HTTP_200_OK)
+        else:
+            logger.error("")
+            return Response(data={"success": False, "message": "", "data": []}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class NoteUpdateView(APIView):
+    serializer_class = NoteSerializer
+
+    def get(self, request, pk):
+        note_id_obj = get_object_or_404(Note, id=pk)
+        if note_id_obj:
+            data = NoteSerializer(note_id_obj).data
+            logger.info("Note with id {} get successfully".format(pk))
+            return Response(data={"success": True, "message": "Note with id {}" " " "get successfully".format(pk), "data": [data]},
+                            status=status.HTTP_200_OK)
+        else:
+            logger.error("Note id not found")
+            return Response(data={"success": False, "message": "Note id not found", "data": []},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        note_obj = Note.objects.get(id=pk)
+        if note_obj:
+            note_obj.delete()
+            response = {
+                "success": True,
+                "message": "Note delete successfully",
+                "data": []
+            }
+            logger.info("Note delete successfully")
+            return Response(data=response, status=status.HTTP_200_OK)
+        else:
+            logger.error("Note id not found")
+            return Response(data={"success": False, "message": "Note id not found", "data": []},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        note_obj = Note.objects.get(id=pk)
+        data = request.data
+        serializer = NoteSerializer(note_obj, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            response = {
+                "success": True,
+                "message": "Update Note successfully",
+                "data": [serializer.data]
+            }
+            return Response(data=response, status=status.HTTP_200_OK)
+        else:
+            return Response(data=response, status=status.HTTP_400_BAD_REQUEST)
 
 
