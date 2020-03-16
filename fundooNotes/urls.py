@@ -22,6 +22,7 @@ from django.urls import path
 urlpatterns = [
     url('admin/', admin.site.urls),
     url('signup/', views.Signup.as_view()),
+    path('activate/<token>', views.activate, name='activate'),
     url('login/', views.Login.as_view()),
     url('forgot_password/', views.ForgotPassword.as_view()),
     path('reset_password/<token>', views.ResetPassword.as_view()),

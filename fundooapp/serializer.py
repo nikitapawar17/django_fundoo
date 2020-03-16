@@ -6,17 +6,43 @@ from .models import Note
 
 
 class UserSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
     email = serializers.EmailField(required=True, validators=[UniqueValidator(queryset=User.objects.all())])
     username = serializers.CharField(max_length=20)
     password = serializers.CharField(min_length=8)
+    is_active = serializers.BooleanField(default=True)
 
     def create(self, validated_data):
-        user = User.objects.create_user(validated_data['username'], validated_data['email'], validated_data['password'])
+        user = User.objects.create_user(first_name=validated_data['first_name'],
+                                        last_name=validated_data['last_name'],
+                                        username=validated_data['username'],
+                                        email=validated_data['email'],
+                                        password=validated_data['password'],
+                                        is_active=validated_data['is_active'])
         return user
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'username', 'password', 'is_active')
+        # fields = '__all__'
+
+
+class LoginSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=20)
+    password = serializers.CharField(min_length=8)
+
+    class Meta:
+        model = User
+        fields = ('username', 'password')
+
+
+class ForgotPasswordSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=200)
+
+    class Meta:
+        model = User
+        fields = ['email']
 
 
 class ResetPasswordSerializer(serializers.ModelSerializer):

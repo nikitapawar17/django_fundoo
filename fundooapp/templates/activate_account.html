@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+Hi {{ user.username }},
+Please click on the link to confirm your registration,
+http://{{ domain }}{% url 'activate' token=token %}
+</body>
+</html>
