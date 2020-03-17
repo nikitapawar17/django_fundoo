@@ -39,16 +39,10 @@ class Signup(APIView):
         if serializer.is_valid():
             user = serializer.save()
             if user:
-                response = {
-                    "success": True,
-                    "message": "Registered Successfully",
-                    "data": [serializer.data]
-                }
                 main_url = get_current_site(request)
-
                 mail_subject = "Activate your account"
                 message = render_to_string('activate_account.html', {'user': user,  # pass the user
-                'domain': main_url,  # pass the url
+                'main_url': main_url,  # pass the url
                 'token': get_user_access_token(user.id, user.email, user.username,)  # pass the token
                 })
                 to_email = serializer.validated_data.get('email')  # get the user email
@@ -56,11 +50,14 @@ class Signup(APIView):
                 # email.send()  # send the mail for activation of account
                 send_html_email(to_email, mail_subject, message)
                 logger.info("Registered Successfully")
-                return JsonResponse(data=response, status=status.HTTP_201_CREATED)
+                return Response({"success": True, "message": "Registered Successfully", "data": [serializer.data]},
+                                status=status.HTTP_201_CREATED)
             else:
-                return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"success": False, "message": "Registered Unsuccessful", "data": []},
+                                status=status.HTTP_400_BAD_REQUEST)
         else:
-            return JsonResponse(data=response, status=status.HTTP_204_NO_CONTENT)
+            return Response({"success": False, "message": "Invalid data", "data": []},
+                            status=status.HTTP_204_NO_CONTENT)
 
 
 def activate(request, token):
@@ -86,16 +83,12 @@ class Login(APIView):
             "data": []
         }
         serializer = LoginSerializer(data=request.data)
-        print(serializer, "<======")
         if serializer.is_valid():
             username = request.data['username']
             usr_pswd = request.data['password']
             user = authenticate(username=username, password=usr_pswd)
             if user:
                 login(request, user)
-                # payload = {
-                #     "id": user.id
-                # }
                 jwt_token = get_user_access_token(user.id, user.email)
                 response = {
                     "success": True,
@@ -103,9 +96,15 @@ class Login(APIView):
                     "data": [jwt_token]
                 }
                 logger.info("Login Successfully")
-                return JsonResponse(data=response, status=status.HTTP_200_OK)
+                return Response({"success": True, "message": "Successfully login", "data": [jwt_token]},
+                                status=status.HTTP_200_OK)
             else:
-                return JsonResponse(data=response, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"success": False, "message": "Login Unsuccessful", "data": []},
+                                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"success": False, "message": "Invalid data", "data": []},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 
 # ForgotPswd with form
 # class ForgotPassword(FormView):
@@ -165,14 +164,10 @@ class ForgotPassword(APIView):
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
-        print(serializer, "<======")
         if serializer.is_valid():
             email = request.data["email"]
             obj = User.objects.filter(email=email)
             if obj:
-                payload = {
-                    "user_email": email
-                }
                 jwt_token = get_user_access_token(email)
                 # jwt_token = jwt.encode(payload, "SECRET_KEY", "HS256").decode('utf-8')
                 link = 'http://127.0.0.1:8000/reset_password/{}'.format(jwt_token)
@@ -185,9 +180,10 @@ class ForgotPassword(APIView):
                  "Please check inbox to continue reset pswd", "data": []}, status=status.HTTP_200_OK)
             else:
                 print("Email not register, first register yourself")
-                return redirect('/signup')
+                return Response({"success": True, "message": "Email for reset password sent successfully", "data": []},
+                                status=status.HTTP_200_OK)
         else:
-            return Response({"success": False, "message": "Something went wrong", "data": []},
+            return Response({"success": False, "message": "Invalid data", "data": []},
                             status=status.HTTP_400_BAD_REQUEST)
 
 # ResetPassword with form
@@ -237,10 +233,9 @@ class ResetPassword(APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
             new_pswd = request.data['new_pswd']
-            print(new_pswd, "NEW PSWD")
             confirm_pswd = request.data['confirm_pswd']
             if new_pswd == confirm_pswd:
-                token_obj = jwt.decode(token, "SECRET_KEY", "HS256")
+                token_obj = decode_token(token)
                 user_obj = User.objects.get(email=token_obj['email'])
                 password = new_pswd
                 user_obj.set_password(password)
@@ -250,7 +245,7 @@ class ResetPassword(APIView):
                 return Response({"success": False, "message": "Password Mismatch", "data": []},
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"success": False, "message": "Serializer is invalid", "data": []},
+            return Response({"success": False, "message": "Invalid data", "data": []},
                             status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -7,6 +7,6 @@
 <body>
 Hi {{ user.username }},
 Please click on the link to confirm your registration,
-http://{{ domain }}{% url 'activate' token=token %}
+http://{{ main_url }}{% url 'activate' token=token %}
 </body>
 </html>
