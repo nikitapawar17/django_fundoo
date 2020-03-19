@@ -25,7 +25,7 @@ urlpatterns = [
     path('activate/<token>', views.activate, name='activate'),
     url('login/', views.Login.as_view()),
     url('forgot_password/', views.ForgotPassword.as_view()),
-    path('reset_password/<token>', views.ResetPassword.as_view()),
+    path('reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
     url(r'note/create/', views.NoteView.as_view()),
     path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view())
 ]

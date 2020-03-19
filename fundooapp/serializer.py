@@ -9,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
     email = serializers.EmailField(required=True, validators=[UniqueValidator(queryset=User.objects.all())])
-    username = serializers.CharField(max_length=20)
+    username = serializers.CharField(max_length=20, validators=[UniqueValidator(queryset=User.objects.all())])
     password = serializers.CharField(min_length=8)
     is_active = serializers.BooleanField(default=True)
 
@@ -29,8 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(max_length=20)
-    password = serializers.CharField(min_length=8)
+    # username = serializers.CharField(max_length=20)
+    # password = serializers.CharField(min_length=8)
 
     class Meta:
         model = User

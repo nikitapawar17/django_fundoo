@@ -30,11 +30,6 @@ class Signup(APIView):
     serializer_class = UserSerializer
 
     def post(self, request, *args, **kwargs):
-        response = {
-            "success": False,
-            "message": "Something went wrong",
-            "data": []
-        }
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -56,7 +51,7 @@ class Signup(APIView):
                 return Response({"success": False, "message": "Registered Unsuccessful", "data": []},
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"success": False, "message": "Invalid data", "data": []},
+            return Response({"success": False, "message": "Enter required data", "data": []},
                             status=status.HTTP_204_NO_CONTENT)
 
 
@@ -64,7 +59,6 @@ def activate(request, token):
     try:
         email = decode_token(token)
         user = User.objects.filter(email=email['email']).first()
-        user.is_active = True
         user.save()
         print("Congratulations! Account is verified.")
         return HttpResponse('Thank you for your email confirmation. Now you can login your account.')
@@ -77,33 +71,34 @@ class Login(APIView):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        response = {
-            "success": False,
-            "message": "Something went wrong",
-            "data": []
-        }
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
+        res = {"message": "Invalid action happened",
+               "data": {},
+               "success": False,
+               }
+        try:
             username = request.data['username']
             usr_pswd = request.data['password']
+            if username is None:
+                return Response("Username is required")
+            if usr_pswd is None:
+                return Response("Password is required")
             user = authenticate(username=username, password=usr_pswd)
             if user:
-                login(request, user)
-                jwt_token = get_user_access_token(user.id, user.email)
-                response = {
-                    "success": True,
-                    "message": "Successfully login",
-                    "data": [jwt_token]
-                }
-                logger.info("Login Successfully")
-                return Response({"success": True, "message": "Successfully login", "data": [jwt_token]},
-                                status=status.HTTP_200_OK)
+                if user.is_active:
+                    jwt_token = get_user_access_token(user.id, user.email)
+                    logger.info("Login Successfully")
+                    login(request, user)
+                    return Response({"success": True, "message": "Successfully login", "data": [jwt_token]},
+                                    status=status.HTTP_200_OK)
+                else:
+                    return Response({"success": False, "message": "User is inactive", "data": []},
+                                    status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"success": False, "message": "Login Unsuccessful", "data": []},
-                                status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({"success": False, "message": "Invalid data", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+                return Response({"success": False, "message": "Invalid login details given", "data": []},
+                                status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            print(e)
+            return Response(res)
 
 
 # ForgotPswd with form
@@ -168,20 +163,20 @@ class ForgotPassword(APIView):
             email = request.data["email"]
             obj = User.objects.filter(email=email)
             if obj:
-                jwt_token = get_user_access_token(email)
-                # jwt_token = jwt.encode(payload, "SECRET_KEY", "HS256").decode('utf-8')
-                link = 'http://127.0.0.1:8000/reset_password/{}'.format(jwt_token)
-                html = """<html><body><p>Please <a href="{}">click here</a> to reset your password. 
-                        </p></body></html>""".format(link)
-                send_html_email(email, "Reset Password", html)
+                main_url = get_current_site(request)
+                message = render_to_string('reset_password_confirm.html', {
+                'main_url': main_url,  # pass the url
+                'token': get_user_access_token(email)
+                 })
+
+                send_html_email(email, "Reset Password", message)
                 logger.info("Email has sent to" + email + "'s email address. Please check inbox "
                                                           "to continue reset pswd ")
                 return Response({"success": True, "message": "Email has sent to " + email + "'s email address. "
                  "Please check inbox to continue reset pswd", "data": []}, status=status.HTTP_200_OK)
             else:
-                print("Email not register, first register yourself")
-                return Response({"success": True, "message": "Email for reset password sent successfully", "data": []},
-                                status=status.HTTP_200_OK)
+                return Response({"success": False, "message": "Fail to sent email for reset password ", "data": []},
+                                status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"success": False, "message": "Invalid data", "data": []},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -240,7 +235,8 @@ class ResetPassword(APIView):
                 password = new_pswd
                 user_obj.set_password(password)
                 user_obj.save()
-                return redirect('/login')
+                return Response({"success": True, "message": "Password successfully reset ", "data": []},
+                                status=status.HTTP_200_OK)
             else:
                 return Response({"success": False, "message": "Password Mismatch", "data": []},
                                 status=status.HTTP_400_BAD_REQUEST)
