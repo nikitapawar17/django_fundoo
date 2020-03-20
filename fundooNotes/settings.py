@@ -148,3 +148,5 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
+JWT_KEY = os.getenv('JWT_KEY')
+JWT_ALGORITHM = os.getenv('JWT_ALGORITHM')
