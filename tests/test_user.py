@@ -3,8 +3,8 @@ import requests
 main_url = 'http://127.0.0.1:8000'
 
 
-def test_signup():
-    url = main_url + '/signup/'
+def test_register():
+    url = main_url + '/register/'
     data = {"username": "user1", "email": "user1@gmail.com", "password": "user1@123"}
     result = requests.post(url, data=data)
     assert result.status_code == 201

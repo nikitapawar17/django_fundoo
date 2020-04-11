@@ -15,17 +15,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf.urls import url
+from django.views.generic import TemplateView
 from fundooapp import views
 from django.urls import path
 
 
 urlpatterns = [
     url('admin/', admin.site.urls),
-    url('signup/', views.Signup.as_view()),
+    url('users/register/', views.Register.as_view()),
     path('activate/<token>', views.activate, name='activate'),
-    url('login/', views.Login.as_view()),
+    url('users/login/', views.Login.as_view()),
+    url('user_logout/', views.logout, name='logout'),
     url('forgot_password/', views.ForgotPassword.as_view()),
     path('reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
-    url(r'note/create/', views.NoteView.as_view()),
-    path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view())
+    url('note/create/', views.NoteView.as_view()),
+    path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view()),
+    path('user_details/', views.user_details, name="user details")
 ]
