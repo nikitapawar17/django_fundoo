@@ -112,65 +112,6 @@ class Login(APIView):
             return Response(response)
 
 
-# ForgotPswd with form
-# class ForgotPassword(FormView):
-#     def get(self, request, *args, **kwargs):
-#         form = ForgotPasswordForm()
-#         return render(request, 'forgot_password.html', {'form': form})
-#
-#     form_class = ForgotPasswordForm
-#     template_name = "forgot_password.html"
-#     success_url = 'forgot_password/'
-#
-#     def post(self, request, *args, **kwargs):
-#         response = {
-#             "success": False,
-#             "message": "Something went wrong",
-#             "data": []
-#         }
-#         if request.method == "POST":
-#             form = self.form_class(request.POST)
-#             if form.is_valid():
-#                 email = form.cleaned_data.get("email")
-#                 user_obj = User.objects.filter(email=email)
-#                 if user_obj:
-#                     payload = {
-#                         "user_email": email
-#                     }
-#                     jwt_token = jwt.encode(payload, "SECRET_KEY", "HS256").decode('utf-8')
-#
-#                     link = 'http://127.0.0.1:8000/reset_password/{}'.format(jwt_token)
-#                     html = """<html><body><p>
-#                             Please <a href="{}">click here</a> to reset your password.
-#                             </p></body></html>""".format(link)
-#                     send_html_email(email, "Reset Password", html)
-#                     result = self.form_valid(form)
-#                     # response = {
-#                     #     "success": True,
-#                     #     "message": "Email has been sent to  {} 's email address. Please check " \
-#                     #                "inbox to continue reset password.".format(email),
-#                     #     "data": []
-#                     # }
-#                     logger.info("Email has sent to" + email + "'s email address. Please check inbox "
-#                                                               "to continue reset pswd ")
-#                     return result
-#                 else:
-#                     print("Email not register, first register yourself")
-#                     return redirect('/signup')
-#         else:
-#             form = ForgotPasswordForm()
-#             result = self.form_valid(form)
-#             return result
-
-
-@login_required
-def user_details(request):
-    data = User.objects.filter(id=request.user.id)
-    if request.method == 'GET':
-        serializer = UserSerializer(data, many=True)
-        return JsonResponse(serializer.data, safe=False)
-
-
 # ForgotPassword with Serializer
 class ForgotPassword(APIView):
     serializer_class = ForgotPasswordSerializer
