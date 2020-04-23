@@ -99,11 +99,11 @@ DATABASES = {
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#         'NAME': os.getenv('DB_NAME'),
-#         'USER': os.getenv('DB_USER'),
-#         'PASSWORD': os.getenv('DB_PASSWORD'),
-#         'HOST': os.getenv('DB_HOST'),
-#         'PORT': int(os.getenv('DB_PORT')),
+#         'NAME': os.getenv('POSTGRESQL_DB_NAME'),
+#         'USER': os.getenv('POSTGRESQL_DB_USER'),
+#         'PASSWORD': os.getenv('POSTGRESQL_DB_PASSWORD'),
+#         'HOST': os.getenv('POSTGRESQL_DB_HOST'),
+#         'PORT': int(os.getenv('POSTGRESQL_DB_PORT')),
 #     }
 # }
 
@@ -152,13 +152,13 @@ REST_FRAMEWORK = {
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_HOST = os.getenv('FUNDOOAPP_EMAIL_HOST')
 EMAIL_USE_TLS = True
-EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = int(os.getenv('FUNDOOAPP_EMAIL_PORT'))
+EMAIL_HOST_USER = os.getenv('FUNDOOAPP_EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('FUNDOOAPP_EMAIL_HOST_PASSWORD')
 
-JWT_KEY = os.getenv('JWT_KEY')
-JWT_ALGORITHM = os.getenv('JWT_ALGORITHM')
+JWT_KEY = os.getenv('FUNDOOAPP_JWT_KEY')
+JWT_ALGORITHM = os.getenv('FUNDOOAPP_JWT_ALGORITHM')
 
 ANGULAR_URL = os.getenv('ANGULAR_URL')

@@ -1,6 +1,6 @@
 __pycache__/
-venv/
-fundooenv/
-.env/
+/venv/
+/fundooenv/
 .env
-.tox/
+.idea/
+*.db

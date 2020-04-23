@@ -34,26 +34,33 @@ class Register(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = UserSerializer(data=request.data)
+        response = {
+            "message": "Something went wrong",
+            "data": [],
+            "success": False,
+        }
         if serializer.is_valid():
             user = serializer.save()
             if user:
                 main_url = get_current_site(request)
                 mail_subject = "Activate your account"
-                message = render_to_string('activate_account.html', {'user': user,  # pass the user
+                message = render_to_string('activate_account.html', {'user': user,
                 'main_url': main_url,  # pass the url
                 'token': get_user_access_token(user.email, user.id, user.username, user.first_name, user.last_name)  # pass the token
                 })
                 to_email = serializer.validated_data.get('email')
                 send_html_email(to_email, mail_subject, message)
                 logger.info("Registered Successfully")
-                return Response({"success": True, "message": "Registered Successfully", "data": [serializer.data]},
-                                status=status.HTTP_201_CREATED)
+                response["success"] = True
+                response["message"] = "Registered Successfully"
+                response["data"] = [serializer.data]
+                return Response(response, status=status.HTTP_201_CREATED)
             else:
-                return Response({"success": False, "message": "Registered Unsuccessful", "data": []},
-                                status=status.HTTP_400_BAD_REQUEST)
+                response["message"] = "Registered Unsuccessful"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"success": False, "message": "Enter required data", "data": []},
-                            status=status.HTTP_204_NO_CONTENT)
+            response["message"] = "Enter required data"
+            return Response(response, status=status.HTTP_204_NO_CONTENT)
 
 
 def activate(request, token):
@@ -72,8 +79,8 @@ class Login(APIView):
 
     def post(self, request):
         response = {
-            "message": "Invalid action happened",
-            "data": {},
+            "message": "Something went wrong",
+            "data": [],
             "success": False,
         }
         try:
@@ -87,16 +94,19 @@ class Login(APIView):
             if user:
                 if user.is_active:
                     jwt_token = get_user_access_token(user.email, user.id, user.username, user.first_name, user.last_name)
+                    response_obj = {"token": jwt_token}
                     logger.info("Login Successfully")
                     login(request, user)
-                    return Response({"success": True, "message": "Successfully login", "data": [jwt_token]},
-                                    status=status.HTTP_200_OK)
+                    response["message"] = "Successfully login"
+                    response["data"] = [response_obj]
+                    response["success"] = True
+                    return Response(response, status=status.HTTP_200_OK)
                 else:
-                    return Response({"success": False, "message": "User is inactive", "data": []},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    response["message"] = "User is inactive"
+                    return Response(response, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"success": False, "message": "Invalid login details given", "data": []},
-                                status=status.HTTP_401_UNAUTHORIZED)
+                response["message"] = "Invalid login details given"
+                return Response(response, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
             print(e)
             return Response(response)
@@ -166,7 +176,13 @@ class ForgotPassword(APIView):
     serializer_class = ForgotPasswordSerializer
 
     def post(self, request):
+        response = {
+            "message": "Something went wrong",
+            "data": [],
+            "success": False,
+        }
         serializer = ForgotPasswordSerializer(data=request.data)
+
         if serializer.is_valid():
             email = request.data["email"]
             obj = User.objects.filter(email=email)
@@ -180,14 +196,16 @@ class ForgotPassword(APIView):
                 send_html_email(email, "Reset Password", message)
                 logger.info("Email has sent to" + email + "'s email address. Please check inbox "
                                                           "to continue reset password ")
-                return Response({"success": True, "message": "Email has sent to " + email + "'s email address. "
-                                "Please check inbox to continue reset password", "data": []}, status=status.HTTP_200_OK)
+                response["success"] = True
+                response["message"] = "Email has sent to " + email + "'s email address. " \
+                                                                     "Please check inbox to continue reset password"
+                return Response(response, status=status.HTTP_200_OK)
             else:
-                return Response({"success": False, "message": "Email address is not register, Please register first",
-                                 "data": []}, status=status.HTTP_400_BAD_REQUEST)
+                response["message"] = "Email address is not register, Please register first"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"success": False, "message": "Invalid data", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            response["message"] = "Invalid data"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 # ResetPassword with form
 
@@ -233,6 +251,12 @@ class ResetPassword(APIView):
     serializer_class = ResetPasswordSerializer
 
     def post(self, request, token):
+        response = {
+            "message": "Something went wrong",
+            "data": [],
+            "success": False,
+        }
+
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
             new_pswd = request.data['new_pswd']
@@ -247,14 +271,15 @@ class ResetPassword(APIView):
                 password = new_pswd
                 user_obj.set_password(password)
                 user_obj.save()
-                return Response({"success": True, "message": "Password successfully reset", "data": []},
-                                status=status.HTTP_200_OK)
+                response["success"] = True
+                response["message"] = "Password successfully reset"
+                return Response(response, status=status.HTTP_200_OK)
             else:
-                return Response({"success": False, "message": "Password Mismatch", "data": []},
-                                status=status.HTTP_400_BAD_REQUEST)
+                response["message"] = "Password Mismatch"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"success": False, "message": "Invalid data", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            response["message"] = "Invalid data"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
 class NoteView(APIView):
@@ -270,69 +295,94 @@ class NoteView(APIView):
         if serializer.is_valid():
             serializer.save()
             logger.info("Note created successfully")
-            return Response(data={"success": True, "message": "Note created successfully", "data": [serializer.data]},
-                            status=status.HTTP_200_OK)
+            response["success"] = True
+            response["message"] = "Note created successfully"
+            response["data"] = serializer.data
+            return Response(response, status=status.HTTP_200_OK)
         else:
-            logger.error("Fail to Note")
-            return Response(data={"success": False, "message": "Fail to create Note ", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            logger.error("Fail to create Note")
+            response["message"] = "Fail to create Note"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
         note_obj = Note.objects.all()
         try:
             if note_obj:
                 data = NoteSerializer(note_obj, many=True).data  # serialize the data
-                response = {
-                    "success": True,
-                    "message": "Get all notes successfully",
-                    "data": [data]
-                }
                 logger.info("All notes got successfully")
-                return Response(data=response, status=status.HTTP_200_OK)
+                response["success"] = True
+                response["message"] = "All notes got successfully"
+                response["data"] = [data]
+                return Response(response, status=status.HTTP_200_OK)
         except:
                 logger.error("Notes not present")
-                return Response(data={"success": False, "message": "Notes not present", "data": []},
-                                status=status.HTTP_400_BAD_REQUEST)
+                response["message"] = "Notes not present"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
 class NoteUpdateView(APIView):
     serializer_class = NoteSerializer
 
     def get(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
         note_id_obj = get_object_or_404(Note, id=pk)
         if note_id_obj:
             data = NoteSerializer(note_id_obj).data
             logger.info("Note with id {} get successfully".format(pk))
-            return Response(data={"success": True, "message": "Note get successfully", "data": [data]},
-                            status=status.HTTP_200_OK)
+            response["success"] = True
+            response["message"] = "Note get successfully"
+            response["data"] = [data]
+            return Response(response, status=status.HTTP_200_OK)
         else:
             logger.error("Note not found")
-            return Response(data={"success": False, "message": "Note not found", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            response["message"] = "Note not found"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
         note_obj = Note.objects.get(id=pk)
         if note_obj:
             note_obj.delete()
             logger.info("Note delete successfully")
-            return Response(data={"success": True, "message": "Note delete successfully", "data": []},
-                            status=status.HTTP_200_OK)
+            response["success"] = True
+            response["message"] = "Note delete successfully"
+            return Response(response, status=status.HTTP_200_OK)
         else:
             logger.error("Note not found")
-            return Response(data={"success": False, "message": "Fail to delete note", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            response["message"] = "Fail to delete note"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
         note_obj = Note.objects.get(id=pk)
         data = request.data
         serializer = NoteSerializer(note_obj, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(data={"success": True, "message": "Update Note successfully", "data": [serializer.data]},
-                            status=status.HTTP_200_OK)
+            response["success"] = True
+            response["message"] = "Note updated successfully"
+            response["data"] = serializer.data
+            return Response(response, status=status.HTTP_200_OK)
         else:
-            return Response(data={"success": False, "message": "Fail to update Note", "data": []},
-                            status=status.HTTP_400_BAD_REQUEST)
+            response["message"] = "Fail to update Note"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
 @login_required
