@@ -1,6 +1,7 @@
-from rest_framework import serializers
+from rest_framework import serializers, fields
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
+from django.utils import timezone
 
 from .models import Note
 
@@ -55,6 +56,14 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
+    # created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ", input_formats=['%Y-%m-%dT%H:%M:%S.%fZ', ])
+    # remainder = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ", input_formats=['%Y-%m-%dT%H:%M:%S.%fZ', ], allow_null=True)
+
+
+    # created_at = serializers.DateTimeField(format="iso-8601")
+    # reminder = serializers.DateTimeField(format="iso-8601", required=False)
+
+    # remainder = serializers.DateTimeField(input_formats=['%Y-%m-%dT%H:%M:%S.%fZ'], allow_null=True)
 
     class Meta:
         model = Note

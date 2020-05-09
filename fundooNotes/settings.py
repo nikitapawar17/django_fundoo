@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_swagger',  # For swagger
     'fundooapp',
     'corsheaders'   # CORS
 ]
@@ -126,6 +127,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': 'localhost:6379',
+    },
+}
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
@@ -148,7 +157,9 @@ STATIC_URL = '/static/'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
      'rest_framework.authentication.TokenAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',  # This is use for swagger
+
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -162,3 +173,4 @@ JWT_KEY = os.getenv('FUNDOOAPP_JWT_KEY')
 JWT_ALGORITHM = os.getenv('FUNDOOAPP_JWT_ALGORITHM')
 
 ANGULAR_URL = os.getenv('ANGULAR_URL')
+

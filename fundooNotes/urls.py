@@ -18,17 +18,32 @@ from django.conf.urls import url
 from django.views.generic import TemplateView
 from fundooapp import views
 from django.urls import path
+from rest_framework_swagger.views import get_swagger_view
+
+
+schema_view = get_swagger_view(title="FUNDOO")
 
 
 urlpatterns = [
+    url(r'^$', schema_view),
     url('admin/', admin.site.urls),
-    url('users/register/', views.Register.as_view()),
-    path('activate/<token>', views.activate, name='activate'),
-    url('users/login/', views.Login.as_view()),
-    url('user_logout/', views.logout, name='logout'),
-    url('forgot_password/', views.ForgotPassword.as_view()),
-    path('reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
-    url('note/create/', views.NoteView.as_view()),
+    url(r'user/register/', views.Register.as_view()),
+    path(r'activate/<token>', views.activate, name='activate'),
+    url(r'user/login/', views.Login.as_view()),
+    url(r'user/forgot_password/', views.ForgotPassword.as_view()),
+    path(r'user/reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
+    url(r'note/create/', views.NoteView.as_view()),
     path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view()),
-    path('user_details/', views.user_details, name="user details")
+
+    path(r'note/trash/<int:pk>', views.TrashNote.as_view()),
+    path(r'note/trash/', views.TrashNoteView.as_view()),
+
+    path(r'note/pin/<int:pk>', views.PinNote.as_view()),
+    path(r'note/pin/', views.PinNoteView.as_view()),
+
+    path(r'note/archive/<int:pk>', views.ArchiveNote.as_view()),
+    path(r'note/archive', views.ArchiveNoteView.as_view()),
+
+    path(r'note/remainder/<int:pk>', views.RemainderNote.as_view())
 ]
+

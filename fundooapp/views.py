@@ -10,9 +10,12 @@ from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
+from rest_framework.generics import GenericAPIView, CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
+
+from .decorators import app_login_required
 from .email_service import send_html_email
 from .forms import ForgotPasswordForm, ResetPasswordForm
 from .serializer import UserSerializer, ResetPasswordSerializer, NoteSerializer, ForgotPasswordSerializer, \
@@ -21,6 +24,9 @@ from .models import Note
 import logging
 
 from .tokens import get_user_access_token, decode_token
+from .redis_service import RedisService
+
+redis_obj = RedisService()
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +34,7 @@ logger = logging.getLogger(__name__)
 from django.conf import settings
 
 
-class Register(APIView):
+class Register(GenericAPIView):
 
     serializer_class = UserSerializer
 
@@ -45,8 +51,8 @@ class Register(APIView):
                 main_url = get_current_site(request)
                 mail_subject = "Activate your account"
                 message = render_to_string('activate_account.html', {'user': user,
-                'main_url': main_url,  # pass the url
-                'token': get_user_access_token(user.email, user.id, user.username, user.first_name, user.last_name)  # pass the token
+                    'main_url': main_url,  # pass the url
+                    'token': get_user_access_token(user.email, user.id, user.username, user.first_name, user.last_name)  # pass the token
                 })
                 to_email = serializer.validated_data.get('email')
                 send_html_email(to_email, mail_subject, message)
@@ -74,10 +80,10 @@ def activate(request, token):
         return HttpResponse('The token is expired!')
 
 
-class Login(APIView):
+class Login(GenericAPIView):
     serializer_class = LoginSerializer
 
-    def post(self, request):
+    def post(self, request,*args, **kwargs):
         response = {
             "message": "Something went wrong",
             "data": [],
@@ -94,6 +100,7 @@ class Login(APIView):
             if user:
                 if user.is_active:
                     jwt_token = get_user_access_token(user.email, user.id, user.username, user.first_name, user.last_name)
+                    redis_obj.set_value('token_key', jwt_token)
                     response_obj = {"token": jwt_token}
                     logger.info("Login Successfully")
                     login(request, user)
@@ -113,7 +120,7 @@ class Login(APIView):
 
 
 # ForgotPassword with Serializer
-class ForgotPassword(APIView):
+class ForgotPassword(GenericAPIView):
     serializer_class = ForgotPasswordSerializer
 
     def post(self, request):
@@ -133,7 +140,6 @@ class ForgotPassword(APIView):
                     'main_url': url,  # pass the url
                     'token': get_user_access_token(email)
                 })
-
                 send_html_email(email, "Reset Password", message)
                 logger.info("Email has sent to" + email + "'s email address. Please check inbox "
                                                           "to continue reset password ")
@@ -148,47 +154,9 @@ class ForgotPassword(APIView):
             response["message"] = "Invalid data"
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
-# ResetPassword with form
-
-# class ResetPassword(APIView):
-#     # import pdb
-#     # pdb.set_trace()
-#     form_class = ResetPasswordForm
-#
-#     def get(self, request, *args, **kwargs):
-#         form = ResetPasswordForm()
-#         return render(request, 'reset_password.html', {'form': form})
-#
-#     def post(self, request, token):
-#         if request.method == "POST":
-#             form = ResetPasswordForm(request.POST)
-#
-#             if form.is_valid():
-#                 new_pswd = form.cleaned_data.get("new_pswd")
-#                 print(new_pswd, "NEW PSWD")
-#                 confirm_pswd = form.cleaned_data.get("confirm_pswd")
-#                 if new_pswd == confirm_pswd:
-#                     user_email = jwt.decode(token, "SECRET_KEY", "HS256")
-#                     print(user_email["user_email"])
-#                     user_obj = User.objects.get(email=user_email['user_email'])
-#                     print(user_obj, type(user_obj))
-#                     user_obj.set_password(new_pswd)
-#                     user_obj.save()
-#                     logger.info("Password reset successfully")
-#                     return redirect('/login')
-#                 else:
-#                     logger.error("Password mismatch")
-#                     return HttpResponse('Password mismatch, try again')
-#             else:
-#                 logger.error("Password reset has not been unsuccessful.")
-#                 return HttpResponse('Password reset has not been unsuccessful.')
-#         else:
-#             form = ResetPasswordForm()
-#             return render(request, 'reset_password.html', {'form': form})
-
 
 # ResetPassword with serializer
-class ResetPassword(APIView):
+class ResetPassword(GenericAPIView):
     serializer_class = ResetPasswordSerializer
 
     def post(self, request, token):
@@ -223,9 +191,10 @@ class ResetPassword(APIView):
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
-class NoteView(APIView):
+class NoteView(GenericAPIView):
     serializer_class = NoteSerializer
 
+    @method_decorator(app_login_required)
     def post(self, request, *args, **kwargs):
         response = {
             "success": False,
@@ -233,8 +202,14 @@ class NoteView(APIView):
             "data": []
         }
         serializer = NoteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        if serializer.is_valid(raise_exception=True):
+            print(serializer.validated_data, "<===")
+
+            token_obj = redis_obj.get_value('token_key')
+            decoded_token = decode_token(token_obj)
+            decoded_id = decoded_token["id"]
+            user = User.objects.get(id=decoded_id)
+            serializer.save(created_by=user)
             logger.info("Note created successfully")
             response["success"] = True
             response["message"] = "Note created successfully"
@@ -245,6 +220,7 @@ class NoteView(APIView):
             response["message"] = "Fail to create Note"
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
+    @method_decorator(app_login_required)
     def get(self, request, *args, **kwargs):
         response = {
             "success": False,
@@ -252,23 +228,23 @@ class NoteView(APIView):
             "data": []
         }
         note_obj = Note.objects.all()
-        try:
-            if note_obj:
-                data = NoteSerializer(note_obj, many=True).data  # serialize the data
-                logger.info("All notes got successfully")
-                response["success"] = True
-                response["message"] = "All notes got successfully"
-                response["data"] = [data]
-                return Response(response, status=status.HTTP_200_OK)
-        except:
-                logger.error("Notes not present")
-                response["message"] = "Notes not present"
-                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        if note_obj:
+            data = NoteSerializer(note_obj, many=True).data  # serialize the data
+            logger.info("All notes got successfully")
+            response["success"] = True
+            response["message"] = "All notes get successfully"
+            response["data"] = [data]
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            logger.error("Notes not present")
+            response["message"] = "Notes not present"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
-class NoteUpdateView(APIView):
+class NoteUpdateView(GenericAPIView):
     serializer_class = NoteSerializer
 
+    @method_decorator(app_login_required)
     def get(self, request, pk):
         response = {
             "success": False,
@@ -288,24 +264,7 @@ class NoteUpdateView(APIView):
             response["message"] = "Note not found"
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
-        response = {
-            "success": False,
-            "message": "Something went wrong",
-            "data": []
-        }
-        note_obj = Note.objects.get(id=pk)
-        if note_obj:
-            note_obj.delete()
-            logger.info("Note delete successfully")
-            response["success"] = True
-            response["message"] = "Note delete successfully"
-            return Response(response, status=status.HTTP_200_OK)
-        else:
-            logger.error("Note not found")
-            response["message"] = "Fail to delete note"
-            return Response(response, status=status.HTTP_400_BAD_REQUEST)
-
+    @method_decorator(app_login_required)
     def put(self, request, pk):
         response = {
             "success": False,
@@ -313,9 +272,11 @@ class NoteUpdateView(APIView):
             "data": []
         }
         note_obj = Note.objects.get(id=pk)
+
         data = request.data
-        serializer = NoteSerializer(note_obj, data=data, partial=True)
-        if serializer.is_valid():
+        serializer = NoteSerializer(note_obj, data=data, partial=True)   # partial=True means we want to be able
+        # to update some fields but not necessarily all at once
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             response["success"] = True
             response["message"] = "Note updated successfully"
@@ -325,13 +286,247 @@ class NoteUpdateView(APIView):
             response["message"] = "Fail to update Note"
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
+    @method_decorator(app_login_required)
+    def delete(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            if note_obj.is_deleted is False:
+                note_obj.is_deleted = True
+                note_obj.is_trash = True
+                note_obj.save()
+                logger.info("Note deleted successfully and added to trash")
+                response["success"] = True
+                response["message"] = "Note deleted successfully and added to trash"
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.info("Note already deleted")
+                response["message"] = "Note already deleted"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            logger.error("Note not found")
+            response["message"] = "Note not found"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
 
-@login_required
-def user_logout(request):
-    logout(request)
-    print('Successfully logout %r user.' % request.user)
 
-    return HttpResponseRedirect('/users/login/')
+
+# To set trash the note
+class TrashNote(GenericAPIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            note_data = NoteSerializer(note_obj).data
+            if note_obj.is_trash is False and note_obj.is_deleted is True:
+                note_obj.is_trash = True
+                note_obj.save()
+                logger.info("Note trashed successfully")
+                response["success"] = True
+                response["message"] = "Note trashed successfully"
+                response["data"] = note_data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.info("Note already trashed")
+                response["message"] = "Note already trashed"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            logger.error("Note not found")
+            response["message"] = "Note not found"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# List out all the notes which are in trash
+class TrashNoteView(GenericAPIView):
+    @method_decorator(app_login_required)
+    def get(self, request):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            trash_notes = Note.objects.filter(is_trash=True)
+            trash_data = NoteSerializer(trash_notes, many=True).data
+            logger.info("Notes are in trash")
+            response["success"] = True
+            response["message"] = "Notes are in trash"
+            response["data"] = [trash_data]
+            return Response(response, status=status.HTTP_200_OK)
+        except:
+            logger.error("Notes not available")
+            response["message"] = "Notes not available"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# To set pin the note
+class PinNote(APIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk):
+        """  This handles the request to pin particular note by note id  """
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            note_data = NoteSerializer(note_obj).data
+            # check note is not pin
+            if note_obj.is_pin is False:
+                # update the record and set the pin
+                note_obj.is_pin = True
+                note_obj.save()
+                logger.info("Note pinned Successfully")
+                response["message"] = "Note pinned Successfully"
+                response["success"] = True
+                response["data"] = note_data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.error("Note already pinned")
+                response["message"] = "Note already pinned"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            response["message"] = "Note not found"
+            logger.error("Note not found")
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# List out pinned notes
+class PinNoteView(GenericAPIView):
+
+    @method_decorator(app_login_required)
+    def get(self, request):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.filter(is_pin=True)
+            notes = NoteSerializer(note_obj, many=True).data
+            logger.info("All pinned notes get successfully")
+            response["success"] = True
+            response["message"] = "All pinned notes get successfully"
+            response["data"] = notes
+            return Response(response, status=status.HTTP_200_OK)
+        except:
+            logger.error("Notes not available")
+            response["message"] = "Notes not available"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# To set archive the note
+class ArchiveNote(GenericAPIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            note_data = NoteSerializer(note_obj).data
+            if note_obj.is_trash is False and note_obj.is_deleted:
+                if note_obj.is_archive is False:
+                    note_obj.is_archive = True
+                    note_obj.save()
+                    logger.info("Archive set successfully")
+                    response["success"] = True
+                    response["message"] = "Archive set successfully"
+                    response["data"] = note_data
+                    return Response(response, status=status.HTTP_200_OK)
+                else:
+                    logger.error("Note already archived")
+                    response["message"] = "Note already archived"
+                    return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                logger.error("Note is already deleted or trashed")
+                response["message"] = "Note is already deleted or trashed"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            logger.error("Note not found")
+            response["message"] = "Note not found"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# List out the archived the notes
+class ArchiveNoteView(GenericAPIView):
+
+    @method_decorator(app_login_required)
+    def get(self, request):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.filter(is_archive=True)
+            notes = NoteSerializer(note_obj, many=True).data
+            logger.info("All archived notes get successfully")
+            response["success"] = True
+            response["message"] = "All archived notes get successfully"
+            response["data"] = notes
+            return Response(response, status=status.HTTP_200_OK)
+        except:
+            logger.error("Notes not available")
+            response["message"] = "Notes not available"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# To set reminder
+class RemainderNote(GenericAPIView):
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            if note_obj.remainder is None:
+                note_obj.remainder = note_obj.created_at
+                note_obj.save()
+                notes = NoteSerializer(note_obj).data
+                created_id = notes['created_by']
+                user = User.objects.get(id=created_id)
+                if user:
+                    send_html_email(user.email, "Sending Notification", "Reminder is set")
+                    logger.info("Successfully sent reminder notification")
+                    response['message'] = 'Successfully sent reminder notification',
+                    response['success'] = True
+                    return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.info("Reminder already set")
+                response["message"] = "Reminder already set"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            logger.info("Note not found")
+            response["message"] = "Note not found"
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+
+
 
 
 
