@@ -56,14 +56,6 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
-    # created_at = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ", input_formats=['%Y-%m-%dT%H:%M:%S.%fZ', ])
-    # remainder = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%S.%fZ", input_formats=['%Y-%m-%dT%H:%M:%S.%fZ', ], allow_null=True)
-
-
-    # created_at = serializers.DateTimeField(format="iso-8601")
-    # reminder = serializers.DateTimeField(format="iso-8601", required=False)
-
-    # remainder = serializers.DateTimeField(input_formats=['%Y-%m-%dT%H:%M:%S.%fZ'], allow_null=True)
 
     class Meta:
         model = Note

@@ -203,8 +203,6 @@ class NoteView(GenericAPIView):
         }
         serializer = NoteSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            print(serializer.validated_data, "<===")
-
             token_obj = redis_obj.get_value('token_key')
             decoded_token = decode_token(token_obj)
             decoded_id = decoded_token["id"]
@@ -233,7 +231,7 @@ class NoteView(GenericAPIView):
             logger.info("All notes got successfully")
             response["success"] = True
             response["message"] = "All notes get successfully"
-            response["data"] = [data]
+            response["data"] = data
             return Response(response, status=status.HTTP_200_OK)
         else:
             logger.error("Notes not present")
@@ -313,13 +311,12 @@ class NoteUpdateView(GenericAPIView):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
 
-
 # To set trash the note
 class TrashNote(GenericAPIView):
     serializer_class = NoteSerializer
 
     @method_decorator(app_login_required)
-    def get(self, request, pk):
+    def get(elf, request, pk):
         response = {
             "success": False,
             "message": "Something went wrong",
@@ -361,7 +358,7 @@ class TrashNoteView(GenericAPIView):
             logger.info("Notes are in trash")
             response["success"] = True
             response["message"] = "Notes are in trash"
-            response["data"] = [trash_data]
+            response["data"] = trash_data
             return Response(response, status=status.HTTP_200_OK)
         except:
             logger.error("Notes not available")

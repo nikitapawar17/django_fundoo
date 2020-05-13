@@ -12,7 +12,6 @@ def app_login_required(function):
         redis_obj = RedisService.get_value(self, 'token_key')
         decoded_token = decode_token(redis_obj)
         decoded_id = decoded_token['id']
-        print(decoded_id, 'IN DECORTORS')
         user = User.objects.get(id=decoded_id)
         if user:
             # if it is present then go to next stp
