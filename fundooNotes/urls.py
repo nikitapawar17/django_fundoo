@@ -20,9 +20,7 @@ from fundooapp import views
 from django.urls import path
 from rest_framework_swagger.views import get_swagger_view
 
-
 schema_view = get_swagger_view(title="FUNDOO")
-
 
 urlpatterns = [
     url(r'^$', schema_view),
@@ -34,6 +32,7 @@ urlpatterns = [
     path(r'user/reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
     url(r'note/create/', views.NoteView.as_view()),
     path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view()),
+    path(r'delete/all/note', views.NoteAllDelete.as_view()),
 
     path(r'note/trash/<int:pk>', views.TrashNote.as_view()),
     path(r'note/trash/', views.TrashNoteView.as_view()),
@@ -44,6 +43,14 @@ urlpatterns = [
     path(r'note/archive/<int:pk>', views.ArchiveNote.as_view()),
     path(r'note/archive', views.ArchiveNoteView.as_view()),
 
-    path(r'note/remainder/<int:pk>', views.RemainderNote.as_view())
+    path(r'note/add/<int:pk>/collaborator/', views.NoteCollaborator.as_view()),
+
+    path(r'note/<int:pk>/remainder/', views.RemainderNote.as_view()),
+    path(r'note/remainder', views.RemainderNoteView.as_view()),
+
+    path(r'note/remove/remainder/<int:pk>', views.RemoveRemainderNote.as_view()),
+
+    url(r'label/create/', views.LabelList.as_view()),
+    path(r'label/detail/<int:pk>', views.LabelViewDetails.as_view()),
 ]
 

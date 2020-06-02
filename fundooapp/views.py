@@ -1,4 +1,5 @@
 import jwt
+import json
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
@@ -19,8 +20,8 @@ from .decorators import app_login_required
 from .email_service import send_html_email
 from .forms import ForgotPasswordForm, ResetPasswordForm
 from .serializer import UserSerializer, ResetPasswordSerializer, NoteSerializer, ForgotPasswordSerializer, \
-    LoginSerializer
-from .models import Note
+    LoginSerializer, LabelSerializer
+from .models import Note, Label
 import logging
 
 from .tokens import get_user_access_token, decode_token
@@ -59,7 +60,7 @@ class Register(GenericAPIView):
                 logger.info("Registered Successfully")
                 response["success"] = True
                 response["message"] = "Registered Successfully"
-                response["data"] = [serializer.data]
+                response["data"] = serializer.data
                 return Response(response, status=status.HTTP_201_CREATED)
             else:
                 response["message"] = "Registered Unsuccessful"
@@ -75,9 +76,9 @@ def activate(request, token):
         user = User.objects.filter(email=decoded_token['email']).first()
         user.save()
         print("Congratulations! Account is verified.")
-        return HttpResponse('Thank you for your email confirmation. Now you can login your account.')
+        return Response('Thank you for your email confirmation. Now you can login your account.')
     except SignatureExpired:
-        return HttpResponse('The token is expired!')
+        return Response('The token is expired!')
 
 
 class Login(GenericAPIView):
@@ -141,7 +142,7 @@ class ForgotPassword(GenericAPIView):
                     'token': get_user_access_token(email)
                 })
                 send_html_email(email, "Reset Password", message)
-                logger.info("Email has sent to" + email + "'s email address. Please check inbox "
+                logger.info("Email has sent to" + email + "'s email . Please check inbox "
                                                           "to continue reset password ")
                 response["success"] = True
                 response["message"] = "Email has sent to " + email + "'s email address. " \
@@ -212,6 +213,11 @@ class NoteView(GenericAPIView):
             response["success"] = True
             response["message"] = "Note created successfully"
             response["data"] = serializer.data
+            # note_data = json.dumps(response)
+            # for collaborated_id in serializer.data["collaborate"]:
+            #     user_obj = User.objects.get(id=collaborated_id)
+            #     if user_obj:
+            #         send_html_email(user_obj.email, "Sending note to user", note_data)
             return Response(response, status=status.HTTP_200_OK)
         else:
             logger.error("Fail to create Note")
@@ -225,7 +231,8 @@ class NoteView(GenericAPIView):
             "message": "Something went wrong",
             "data": []
         }
-        note_obj = Note.objects.all()
+        # note_obj = Note.objects.all()
+        note_obj = Note.objects.filter(is_trash=False)
         if note_obj:
             data = NoteSerializer(note_obj, many=True).data  # serialize the data
             logger.info("All notes got successfully")
@@ -270,7 +277,6 @@ class NoteUpdateView(GenericAPIView):
             "data": []
         }
         note_obj = Note.objects.get(id=pk)
-
         data = request.data
         serializer = NoteSerializer(note_obj, data=data, partial=True)   # partial=True means we want to be able
         # to update some fields but not necessarily all at once
@@ -311,12 +317,40 @@ class NoteUpdateView(GenericAPIView):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
 
+class NoteAllDelete(GenericAPIView):
+    @method_decorator(app_login_required)
+    def delete(self, request):
+        serializer_class = NoteSerializer
+        response = {
+           "success": False,
+           "message": "Something went wrong",
+           "data": []
+        }
+        try:
+           note_obj = Note.objects.filter(is_trash=True)
+           print(note_obj)
+           if note_obj:
+               note_obj.delete()
+               logger.info("All notes delete successfully")
+               response["success"] = True
+               response["message"] = "All notes delete successfully"
+               return Response(response, status=status.HTTP_200_OK)
+           else:
+               logger.error("Notes not present")
+               response["message"] = "Notes not present"
+               return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+           logger.error("Notes not present")
+           response["message"] = "Notes not present"
+           return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
 # To set trash the note
 class TrashNote(GenericAPIView):
     serializer_class = NoteSerializer
 
     @method_decorator(app_login_required)
-    def get(elf, request, pk):
+    def get(self, request, pk):
         response = {
             "success": False,
             "message": "Something went wrong",
@@ -486,33 +520,108 @@ class ArchiveNoteView(GenericAPIView):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
 
-# To set reminder
-class RemainderNote(GenericAPIView):
+class NoteCollaborator(GenericAPIView):
+    serializer_class = NoteSerializer
 
     @method_decorator(app_login_required)
-    def get(self, request, pk):
+    def get(self, request, pk=None):
+        notes = Note.objects.get(id=pk)
+        serializer = NoteSerializer(notes).data
+        return Response(serializer)
+
+    @method_decorator(app_login_required)
+    def get_by_object(self, pk=None):
+        obj = Note.objects.get(id=pk)
+        return obj
+
+    @method_decorator(app_login_required)
+    def put(self, request, pk=None):
         response = {
             "success": False,
             "message": "Something went wrong",
             "data": []
         }
         try:
+            colloborate_data = request.data
+            collaborator_email = colloborate_data["collaborate"]
+            colloborate_user = User.objects.filter(email=collaborator_email) & User.objects.filter(is_active=1)
+            user_id = []
+            for i in colloborate_user:
+                user_id.append(i.id)
+            collaborate_id = user_id[0]
             note_obj = Note.objects.get(id=pk)
-            if note_obj.remainder is None:
-                note_obj.remainder = note_obj.created_at
-                note_obj.save()
-                notes = NoteSerializer(note_obj).data
-                created_id = notes['created_by']
-                user = User.objects.get(id=created_id)
-                if user:
-                    send_html_email(user.email, "Sending Notification", "Reminder is set")
-                    logger.info("Successfully sent reminder notification")
-                    response['message'] = 'Successfully sent reminder notification',
-                    response['success'] = True
-                    return Response(response, status=status.HTTP_200_OK)
+            if not note_obj:
+                return Response("Note not found")
+            token_obj = redis_obj.get_value('token_key')
+            decoded_token = decode_token(token_obj)
+            decoded_id = decoded_token['id']
+            decoded_email = decoded_token['email']
+            user = User.objects.get(id=decoded_id)
+            if collaborator_email:
+                if collaborator_email == decoded_email:
+                    print(collaborator_email, decoded_email, "<<<<<<", note_obj)
+                    response["message"] = "with same email id can not be collaborate, Please pass the correct email id"
+                    response["success"] = False
+                    return Response(response, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    note_obj.collaborate.add(int(collaborate_id))
+                    note_obj.save()
+                    current_site = get_current_site(request)
+                    mail_subject = "Check collaborated note"
+                    message = render_to_string('collaborate_email.html', {'user': user, 'domain': current_site.domain})
+                    to_email = collaborator_email
+                    send_html_email(to_email, mail_subject, message)
+                    logger.info("Note Collaborated Successfully")
+                    response["success"] = True
+                    response["message"] = "Note Collaborated Successfully"
+                    response["data"] = colloborate_data
+                    return Response(response, status=status.HTTP_201_CREATED)
             else:
-                logger.info("Reminder already set")
-                response["message"] = "Reminder already set"
+                response["message"] = "Given collaborated email not found in database"
+                return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except :
+            response["message"] = "Note id can't be blank"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
+# To set reminder
+class RemainderNote(GenericAPIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk=None):
+        notes = Note.objects.get(id=pk)
+        serializer = NoteSerializer(notes).data
+        return Response(serializer)
+
+    @method_decorator(app_login_required)
+    def put(self, request, pk=None):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_data = request.data
+            obj = Note.objects.get(id=pk)
+            if not obj:
+                response["message"] = "Note not present"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            if not obj.is_trash:
+                # update the record and set the reminder
+                obj.remainder = note_data
+                obj.save()
+                created_id = obj.created_by
+                user = User.objects.get(id=created_id.id)
+                send_html_email(user.email, "Sending Notification", "Reminder is set")
+                logger.info("Successfully sent reminder notification")
+                response['message'] = 'Successfully sent reminder notification'
+                # response["message"] = "Remainder set successfully"
+                response['success'] = True
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.info("Note deleted or trashed")
+                response["message"] = "Note deleted or trashed"
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
         except:
             logger.info("Note not found")
@@ -520,7 +629,168 @@ class RemainderNote(GenericAPIView):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
 
+class RemainderNoteView(GenericAPIView):
+    @method_decorator(app_login_required)
+    def get(self, request):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        notes_obj = Note.objects.filter(remainder__isnull=False, is_trash=False)
+        serializer = NoteSerializer(notes_obj, many=True).data
+        logger.info("All notes with reminder get successfully")
+        response['message'] = 'All notes with reminder get successfully',
+        response['success'] = True
+        response['data'] = serializer
+        return Response(response, status=status.HTTP_200_OK)
 
+
+class RemoveRemainderNote(GenericAPIView):
+    @method_decorator(app_login_required)
+    def get(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        notes_obj = Note.objects.get(id=pk)
+        if notes_obj.remainder is not None:
+            notes_obj.remainder = None
+            notes_obj.save()
+            logger.info("Note reminder remove successfully")
+            response['message'] = 'Note reminder remove successfully'
+            response['success'] = True
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            logger.info("Note not present")
+            response['message'] = 'Note not present'
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# to create the label and list of labels
+class LabelList(GenericAPIView):
+    serializer_class = LabelSerializer
+
+    # list of labels
+    @method_decorator(app_login_required)
+    def get(self, request, is_deleted=None):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        label_obj = Label.objects.filter(is_deleted=False)
+        if label_obj:
+            serializer = LabelSerializer(label_obj, many=True).data
+            logger.info("All labels get successfully")
+            response["success"] = True
+            response["message"] = "All labels get successfully"
+            response["data"] = serializer
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            logger.error("Labels not present")
+            response["message"] = "Labels not present"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # creating the new label
+    @method_decorator(app_login_required)
+    def post(self, request):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        serializer = LabelSerializer(data=request.data)
+        try:
+            if serializer.is_valid():
+                serializer.save()
+                logger.info("Label created successfully")
+                response["success"] = True
+                response["message"] = "Label created successfully"
+                response["data"] = serializer.data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.info("Fail to create label")
+                response["message"] = "Fail to create label"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
+# perform operations like edit, delete on labels
+class LabelViewDetails(GenericAPIView):
+    serializer_class = LabelSerializer
+
+    # to get id wise label
+    @method_decorator(app_login_required)
+    def get(self, request, pk=None):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            obj = Label.objects.get(id=pk)
+            label_obj = LabelSerializer(obj).data
+            logger.info("Label get successfully")
+            response["success"] = True
+            response["message"] = "Label get successfully"
+            response["data"] = label_obj
+            return Response(response, status=status.HTTP_200_OK)
+        except:
+            response["message"] = "label not available of this id"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # editing the label
+    @method_decorator(app_login_required)
+    def put(self, request, pk=None):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            data = request.data
+            instance = Label.objects.get(id=pk)
+            serializer = LabelSerializer(instance, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                response["success"] = True
+                response["message"] = "Label updated successfully"
+                response["data"] = serializer.data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                response["message"] = "Fail to update label"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # deleting the label
+    @method_decorator(app_login_required)
+    def delete(self, request, pk):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            instance = Label.objects.get(id=pk)
+            if instance.is_deleted is False:
+                instance.is_deleted = True
+                instance.save()
+                response["success"] = True
+                response["message"] = "Label Deleted Successfully"
+                logger.info("Label Deleted Successfully")
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.error("Label already deleted")
+                response["message"] = "Label already deleted"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            logger.error("Label Does Not Exist Or Deleted.")
+            response["message"] = "Label Does Not Exist Or Deleted."
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
 
 

@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.utils import timezone
 
-from .models import Note
+from .models import Note, Label
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -53,6 +53,13 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('new_pswd', 'confirm_pswd')
+
+
+class LabelSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Label
+        fields = '__all__'
 
 
 class NoteSerializer(serializers.ModelSerializer):
