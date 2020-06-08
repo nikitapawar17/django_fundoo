@@ -213,11 +213,6 @@ class NoteView(GenericAPIView):
             response["success"] = True
             response["message"] = "Note created successfully"
             response["data"] = serializer.data
-            # note_data = json.dumps(response)
-            # for collaborated_id in serializer.data["collaborate"]:
-            #     user_obj = User.objects.get(id=collaborated_id)
-            #     if user_obj:
-            #         send_html_email(user_obj.email, "Sending note to user", note_data)
             return Response(response, status=status.HTTP_200_OK)
         else:
             logger.error("Fail to create Note")
@@ -299,13 +294,14 @@ class NoteUpdateView(GenericAPIView):
         }
         try:
             note_obj = Note.objects.get(id=pk)
-            if note_obj.is_deleted is False:
-                note_obj.is_deleted = True
-                note_obj.is_trash = True
-                note_obj.save()
-                logger.info("Note deleted successfully and added to trash")
+            if note_obj.is_deleted is True and note_obj.is_trash is True:
+                # note_obj.is_deleted = True
+                # note_obj.is_trash = True
+                note_obj.delete()
+                # note_obj.save()
+                logger.info("Note deleted forever successfully")
                 response["success"] = True
-                response["message"] = "Note deleted successfully and added to trash"
+                response["message"] = "Note deleted forever successfully"
                 return Response(response, status=status.HTTP_200_OK)
             else:
                 logger.info("Note already deleted")
@@ -318,9 +314,10 @@ class NoteUpdateView(GenericAPIView):
 
 
 class NoteAllDelete(GenericAPIView):
+    serializer_class = NoteSerializer
+
     @method_decorator(app_login_required)
     def delete(self, request):
-        serializer_class = NoteSerializer
         response = {
            "success": False,
            "message": "Something went wrong",
@@ -350,7 +347,13 @@ class TrashNote(GenericAPIView):
     serializer_class = NoteSerializer
 
     @method_decorator(app_login_required)
-    def get(self, request, pk):
+    def get(self, request, pk=None):
+        notes = Note.objects.get(id=pk)
+        serializer = NoteSerializer(notes).data
+        return Response(serializer)
+
+    @method_decorator(app_login_required)
+    def delete(self, request, pk):
         response = {
             "success": False,
             "message": "Something went wrong",
@@ -359,7 +362,8 @@ class TrashNote(GenericAPIView):
         try:
             note_obj = Note.objects.get(id=pk)
             note_data = NoteSerializer(note_obj).data
-            if note_obj.is_trash is False and note_obj.is_deleted is True:
+            if note_obj.is_trash is False and note_obj.is_deleted is False:
+                note_obj.is_deleted = True
                 note_obj.is_trash = True
                 note_obj.save()
                 logger.info("Note trashed successfully")
@@ -405,7 +409,13 @@ class PinNote(APIView):
     serializer_class = NoteSerializer
 
     @method_decorator(app_login_required)
-    def get(self, request, pk):
+    def get(self, request, pk=None):
+        notes = Note.objects.get(id=pk)
+        serializer = NoteSerializer(notes).data
+        return Response(serializer)
+
+    @method_decorator(app_login_required)
+    def put(self, request, pk):
         """  This handles the request to pin particular note by note id  """
         response = {
             "success": False,
@@ -428,6 +438,47 @@ class PinNote(APIView):
             else:
                 logger.error("Note already pinned")
                 response["message"] = "Note already pinned"
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            response["message"] = "Note not found"
+            logger.error("Note not found")
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+# To set pin the note
+class UnPinNote(APIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk=None):
+        notes = Note.objects.get(id=pk)
+        serializer = NoteSerializer(notes).data
+        return Response(serializer)
+
+    @method_decorator(app_login_required)
+    def put(self, request, pk):
+        """  This handles the request to unpin particular note by note id  """
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        try:
+            note_obj = Note.objects.get(id=pk)
+            note_data = NoteSerializer(note_obj).data
+            # check note is not pin
+            if note_obj.is_pin is True:
+                # update the record and set the pin
+                note_obj.is_pin = False
+                note_obj.save()
+                logger.info("Note unpinned Successfully")
+                response["message"] = "Note unpinned Successfully"
+                response["success"] = True
+                response["data"] = note_data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                logger.error("Note already unpinned")
+                response["message"] = "Note already unpinned"
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
         except:
             response["message"] = "Note not found"
@@ -559,7 +610,6 @@ class NoteCollaborator(GenericAPIView):
             user = User.objects.get(id=decoded_id)
             if collaborator_email:
                 if collaborator_email == decoded_email:
-                    print(collaborator_email, decoded_email, "<<<<<<", note_obj)
                     response["message"] = "with same email id can not be collaborate, Please pass the correct email id"
                     response["success"] = False
                     return Response(response, status=status.HTTP_400_BAD_REQUEST)
@@ -666,6 +716,48 @@ class RemoveRemainderNote(GenericAPIView):
             logger.info("Note not present")
             response['message'] = 'Note not present'
             return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+
+class AddLabel(GenericAPIView):
+    serializer_class = NoteSerializer
+
+    @method_decorator(app_login_required)
+    def get(self, request, pk=None):
+        label_obj = Label.objects.get(id=pk)
+        label_data = LabelSerializer(label_obj).data
+        return label_data
+
+    @method_decorator(app_login_required)
+    def post(self, request, pk=None):
+        response = {
+            "success": False,
+            "message": "Something went wrong",
+            "data": []
+        }
+        print(request.data)
+        try:
+            label_id = request.data.get('label')
+            if not label_id:
+                return Response("Label not found")
+            else:
+                label_obj = Label.objects.get(id=label_id)
+            if not pk:
+                return Response("Note not found")
+            else:
+                note_obj = Note.objects.get(id=pk)
+                note_obj.label.add(label_obj)
+                note_obj.save()
+                logger.info("Label added successfully")
+                response["success"] = True
+                response["message"] = "Label added successfully"
+                return Response(response, status=status.HTTP_200_OK)
+        except:
+            logger.error("Fail to add label")
+            response["message"] = "Fail to add label"
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 
 # to create the label and list of labels
@@ -777,8 +869,9 @@ class LabelViewDetails(GenericAPIView):
         try:
             instance = Label.objects.get(id=pk)
             if instance.is_deleted is False:
-                instance.is_deleted = True
-                instance.save()
+                # instance.is_deleted = True
+                # instance.save()
+                instance.delete()
                 response["success"] = True
                 response["message"] = "Label Deleted Successfully"
                 logger.info("Label Deleted Successfully")

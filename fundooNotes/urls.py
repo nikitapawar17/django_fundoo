@@ -32,13 +32,15 @@ urlpatterns = [
     path(r'user/reset_password/<token>', views.ResetPassword.as_view(), name='reset_password'),
     url(r'note/create/', views.NoteView.as_view()),
     path(r'note/detail/<int:pk>', views.NoteUpdateView.as_view()),
-    path(r'delete/all/note', views.NoteAllDelete.as_view()),
+    path(r'note/delete/all/', views.NoteAllDelete.as_view()),
 
     path(r'note/trash/<int:pk>', views.TrashNote.as_view()),
     path(r'note/trash/', views.TrashNoteView.as_view()),
 
     path(r'note/pin/<int:pk>', views.PinNote.as_view()),
     path(r'note/pin/', views.PinNoteView.as_view()),
+
+    path(r'note/unpin/<int:pk>', views.UnPinNote.as_view()),
 
     path(r'note/archive/<int:pk>', views.ArchiveNote.as_view()),
     path(r'note/archive', views.ArchiveNoteView.as_view()),
@@ -52,5 +54,7 @@ urlpatterns = [
 
     url(r'label/create/', views.LabelList.as_view()),
     path(r'label/detail/<int:pk>', views.LabelViewDetails.as_view()),
+
+    path(r'label/add/<int:pk>', views.AddLabel.as_view())
 ]
 

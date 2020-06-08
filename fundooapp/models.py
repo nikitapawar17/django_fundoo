@@ -18,11 +18,11 @@ from django.utils import timezone
 
 
 class Label(models.Model):
-    title = models.CharField(max_length=20, blank=False)
-    is_deleted = models.BooleanField(default=False, blank=True)
+    label = models.CharField(max_length=20, blank=False)
+    is_deleted = models.BooleanField(default=False, null=True, blank=True)
 
     def __str__(self):
-        return self.title
+        return self.label
 
 
 class Note(models.Model):
@@ -33,7 +33,9 @@ class Note(models.Model):
         ('Green', 'Green'),
         ('Blue', 'Blue')
     )
-    color = models.CharField(default='Blue', choices=COLOR_CHOICES, max_length=20, null=True)
+    color = models.TextField(null=True, blank=True)
+    # color = models.CharField(default='Blue', choices=COLOR_CHOICES, max_length=20, null=True)
+    label = models.ManyToManyField(Label, related_name='note_label', blank=True)
     created_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
     remainder = models.DateTimeField(default=None, null=True)
     is_archive = models.BooleanField(default=False, null=True, blank=True)
