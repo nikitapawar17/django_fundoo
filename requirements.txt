@@ -9,7 +9,7 @@ coreapi==2.3.3
 coreschema==0.0.4
 decorator==4.4.2
 distlib==0.3.0
-Django==2.1.7
+Django==2.2.13
 django-cors-headers==3.2.1
 django-redis==4.11.0
 django-rest-swagger==2.2.0
