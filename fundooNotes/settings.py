@@ -28,7 +28,7 @@ SECRET_KEY = 't^m9@gxfis22t+og=l=%d$v8-0(jlph3fqi8@ua#^#griyu5b1'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -60,7 +60,7 @@ MIDDLEWARE = [
 ]
 
 
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:4200',
 )
@@ -149,7 +149,6 @@ USE_L10N = True
 USE_TZ = True
 
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
@@ -164,14 +163,25 @@ REST_FRAMEWORK = {
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv('FUNDOOAPP_EMAIL_HOST')
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_USE_TLS = True
-EMAIL_PORT = int(os.getenv('FUNDOOAPP_EMAIL_PORT'))
-EMAIL_HOST_USER = os.getenv('FUNDOOAPP_EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('FUNDOOAPP_EMAIL_HOST_PASSWORD')
+EMAIL_PORT = 587
+EMAIL_HOST_USER = "yavatmalnikita17@gmail.com"
+EMAIL_HOST_PASSWORD = "nikita@17"
 
-JWT_KEY = os.getenv('FUNDOOAPP_JWT_KEY')
-JWT_ALGORITHM = os.getenv('FUNDOOAPP_JWT_ALGORITHM')
+JWT_KEY = "SECRET_KEY"
+JWT_ALGORITHM = "HS256"
 
-ANGULAR_URL = os.getenv('ANGULAR_URL')
+ANGULAR_URL = "http://localhost:4200"
+
+# EMAIL_HOST = os.getenv('FUNDOOAPP_EMAIL_HOST')
+# EMAIL_USE_TLS = True
+# EMAIL_PORT = int(os.getenv('FUNDOOAPP_EMAIL_PORT'))
+# EMAIL_HOST_USER = os.getenv('FUNDOOAPP_EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('FUNDOOAPP_EMAIL_HOST_PASSWORD')
+#
+# JWT_KEY = os.getenv('FUNDOOAPP_JWT_KEY')
+# JWT_ALGORITHM = os.getenv('FUNDOOAPP_JWT_ALGORITHM')
+#
+# ANGULAR_URL = os.getenv('ANGULAR_URL')
 
