@@ -58,3 +58,4 @@ urlpatterns = [
     path(r'label/add/<int:pk>', views.AddLabel.as_view())
 ]
 
+
